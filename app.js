@@ -1,26 +1,48 @@
 const express = require("express");
-const bodyParser = require("body-parser");
+const cors = require("cors");
+const mongoose = require("mongoose");
+const Customer = require("./model/customer.js");
+require("dotenv").config();
 
 const app = express();
-app.use(bodyParser.urlencoded());
-app.use(bodyParser.json());
+app.use(express.json());
+
 const port = 3000;
+const uri = process.env.MONGODB_CONNECTION_STRING;
 
-const customers = [
-  { firstName: "John", lastName: "Smith" },
-  { firstName: "Harry", lastName: "Potter" },
-  { firstName: "Jack", lastName: "Sparrow" },
-];
-
-app.get("/customerlist", (req, res) => {
-  res.send(customers);
+mongoose.connect(uri, {
+  useNewUrlParser: true,
+  useCreateIndex: true,
+  useUnifiedTopology: true,
 });
 
-app.post("/customer", (req, res) => {
-  console.log("req.body: ", req.body);
-  const newCustomer = req.body;
-  customers.push(newCustomer);
-  res.send("Customer added");
+const connection = mongoose.connection;
+connection.once("open", () => {
+  console.log("MongoDB database connection established successfully");
+});
+
+app.get("/customerlist", async (req, res) => {
+  await Customer.find({}, (err, result) => {
+    console.log("customer from db: ", result);
+    res.send(result);
+  });
+});
+
+app.post("/customer", async (req, res) => {
+  try {
+    console.log("req.body: ", req.body);
+
+    const newCustomer = new Customer({
+      customerFirstName: req.body.customerFirstName,
+      customerLastName: req.body.customerLastName,
+    });
+
+    await Customer.create(newCustomer);
+
+    res.send("Customer added");
+  } catch (error) {
+    console.log(error);
+  }
 });
 
 app.listen(port, () => {
